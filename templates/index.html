@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>J&T | Capotamento</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">J&T EXPRESS • QUALIDADE REGIONAL</div>
+        <h1>Central de Capotamento</h1>
+        <p>Alerta, pré-alerta, pressão operacional e execução por base.</p>
+      </div>
+      <div class="updated" id="updated">Carregando...</div>
+    </header>
+
+    <section class="filters panel">
+      <label>Data<select id="dataFilter"></select></label>
+      <label>UF<select id="ufFilter"><option value="">Todas</option></select></label>
+      <label>R/M<select id="rmFilter"><option value="">Todos</option></select></label>
+      <label>Coordenador<select id="coordFilter"><option value="">Todos</option></select></label>
+      <label>Supervisor<select id="supFilter"><option value="">Todos</option></select></label>
+      <label>Status<select id="statusFilter">
+        <option value="">Todos</option>
+        <option>NORMAL</option><option>MONITORAR</option><option>PRÉ-ALERTA</option>
+        <option>PRÉ-ALERTA CRÍTICO</option><option>ALERTA</option><option>CAPOTADA</option>
+      </select></label>
+      <button id="clearFilters" class="button ghost">Limpar</button>
+      <button id="exportBtn" class="button">Baixar CSV</button>
+    </section>
+
+    <section class="cards" id="cards">
+      <article class="card"><span>Bases monitoradas</span><strong id="kTotal">—</strong></article>
+      <article class="card"><span>Monitorar</span><strong id="kMonitorar">—</strong></article>
+      <article class="card warning"><span>Pré-alerta</span><strong id="kPre">—</strong></article>
+      <article class="card danger-soft"><span>Pré-alerta crítico</span><strong id="kCritico">—</strong></article>
+      <article class="card danger"><span>Alerta oficial</span><strong id="kAlerta">—</strong></article>
+      <article class="card danger"><span>Capotadas</span><strong id="kCapotadas">—</strong></article>
+      <article class="card"><span>Retidos até 10D</span><strong id="kRetidos">—</strong></article>
+      <article class="card"><span>Reincidentes 30D</span><strong id="kReincidentes">—</strong></article>
+    </section>
+
+    <section class="panel execution">
+      <div class="section-head">
+        <div><h2>Bases para executar hoje</h2><p>Ordenação automática por status e proximidade conjunta do gatilho.</p></div>
+        <div class="legend"><i class="dot normal"></i>Normal <i class="dot monitor"></i>Monitorar <i class="dot pre"></i>Pré-alerta <i class="dot critical"></i>Crítico</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Base</th><th>UF</th><th>Supervisor</th><th>Coordenador</th><th>Status</th>
+            <th>Janela</th><th>Risco</th><th>Retidos</th><th>Índice</th><th>Falta qtd.</th><th>Falta índice</th>
+          </tr></thead>
+          <tbody id="rankingBody"></tbody>
+        </table>
+      </div>
+      <div class="table-footer"><span id="rankingInfo"></span><button id="moreBtn" class="button ghost">Ver mais</button></div>
+    </section>
+
+    <section class="grid two">
+      <article class="panel">
+        <div class="section-head"><div><h2>Mapa de pressão por janela</h2><p>Percentual conjunto de aproximação aos limites oficiais.</p></div></div>
+        <div class="table-wrap heat-wrap">
+          <table class="heat-table"><thead><tr><th>Base</th><th>1D</th><th>3D</th><th>5D</th><th>7D</th><th>10D</th></tr></thead><tbody id="heatBody"></tbody></table>
+        </div>
+      </article>
+      <article class="panel">
+        <div class="section-head"><div><h2>Gestão</h2><p>Quem concentra mais pressão operacional.</p></div>
+          <select id="gestaoTipo"><option value="coordenador">Coordenador</option><option value="supervisor">Supervisor</option><option value="rm">R/M</option></select>
+        </div>
+        <div id="gestaoList" class="owner-list"></div>
+      </article>
+    </section>
+
+    <section class="panel detail" id="detailPanel">
+      <div class="section-head">
+        <div><h2 id="detailTitle">Selecione uma base</h2><p id="detailMeta">Clique em uma linha do ranking para abrir a análise completa.</p></div>
+        <div id="detailStatus" class="status-pill normal">—</div>
+      </div>
+      <div class="detail-grid">
+        <div class="pressure-grid" id="pressureGrid"></div>
+        <div class="capacity panel-inner">
+          <h3>Capacidade / contexto</h3>
+          <dl>
+            <div><dt>Maior entrega no prazo 7D</dt><dd id="dMax7">—</dd></div>
+            <div><dt>Média entregue no prazo 7D</dt><dd id="dAvg7">—</dd></div>
+            <div><dt>Capotamentos últimos 30D</dt><dd id="dCap30">—</dd></div>
+            <div><dt>Dias consecutivos</dt><dd id="dDias">—</dd></div>
+            <div><dt>Regra x fonte</dt><dd id="dDivergencia">—</dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article class="panel chart-panel"><div class="section-head"><div><h2>Evolução dos retidos</h2><p>Histórico da base selecionada.</p></div></div><canvas id="retidosChart"></canvas></article>
+      <article class="panel chart-panel"><div class="section-head"><div><h2>Evolução do índice</h2><p>Pressão da base em relação à capacidade.</p></div></div><canvas id="indiceChart"></canvas></article>
+    </section>
+
+    <section class="panel rules">
+      <div class="section-head"><div><h2>Régua oficial</h2><p>Quantidade e índice devem ser atingidos simultaneamente.</p></div></div>
+      <div class="rule-grid">
+        <div><b>1D</b><strong>500</strong><span>Índice &gt; 0,50</span><em>Alerta</em></div>
+        <div><b>3D</b><strong>800</strong><span>Índice &gt; 0,80</span><em>Capotamento</em></div>
+        <div><b>5D</b><strong>1.000</strong><span>Índice &gt; 1,00</span><em>Capotamento</em></div>
+        <div><b>7D</b><strong>1.200</strong><span>Índice &gt; 1,20</span><em>Capotamento</em></div>
+        <div><b>10D</b><strong>1.500</strong><span>Índice &gt; 1,50</span><em>Capotamento</em></div>
+      </div>
+      <div class="footnote">Pré-alerta interno: Monitorar ≥60% • Pré-alerta ≥80% • Crítico ≥90% do gatilho conjunto. O status oficial permanece o informado na fonte.</div>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
