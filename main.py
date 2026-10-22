@@ -32,7 +32,6 @@ STATUS_ORDER = {
 
 
 def api_error(endpoint: str, exc: Exception) -> JSONResponse:
-    """Retorna erro legível e imprime o traceback completo no terminal."""
     print(f"\n{'=' * 72}")
     print(f"ERRO EM {endpoint}")
     print(f"Tipo: {type(exc).__name__}")
@@ -68,11 +67,15 @@ def resolve_date(value: str | None) -> str | None:
     return value or latest_date()
 
 
+def get_sc(row: dict[str, Any]) -> str:
+    """S/C: usa Coordenador quando existe; caso contrário, Supervisor."""
+    return str(row.get("coordenador") or row.get("supervisor") or "").strip()
+
+
 def query_day(
     data_ref: str,
     uf: str | None = None,
-    coordenador: str | None = None,
-    supervisor: str | None = None,
+    sc: str | None = None,
     rm: str | None = None,
 ) -> list[dict[str, Any]]:
     sb = get_supabase()
@@ -80,15 +83,15 @@ def query_day(
 
     if uf:
         q = q.eq("uf", uf)
-    if coordenador:
-        q = q.eq("coordenador", coordenador)
-    if supervisor:
-        q = q.eq("supervisor", supervisor)
     if rm:
         q = q.eq("rm", rm)
 
-    result = q.execute()
-    return result.data or []
+    rows = q.execute().data or []
+
+    if sc:
+        rows = [r for r in rows if get_sc(r) == sc]
+
+    return rows
 
 
 def unique_values(rows: list[dict[str, Any]], key: str) -> list[str]:
@@ -99,6 +102,10 @@ def unique_values(rows: list[dict[str, Any]], key: str) -> list[str]:
             if r.get(key) not in (None, "")
         }
     )
+
+
+def unique_sc(rows: list[dict[str, Any]]) -> list[str]:
+    return sorted({get_sc(r) for r in rows if get_sc(r)})
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -112,15 +119,9 @@ async def home(request: Request):
 
 @app.get("/api/health")
 async def api_health():
-    """Endpoint simples para validar API + Supabase."""
     try:
         sb = get_supabase()
-        result = (
-            sb.table("capotamento_diario")
-            .select("data")
-            .limit(1)
-            .execute()
-        )
+        result = sb.table("capotamento_diario").select("data").limit(1).execute()
         return {
             "ok": True,
             "supabase": True,
@@ -140,13 +141,11 @@ async def api_datas():
             .order("data", desc=True)
             .execute()
         )
-
         rows = response.data or []
         datas = sorted(
             {str(r.get("data")) for r in rows if r.get("data")},
             reverse=True,
         )
-
         return {
             "ok": True,
             "datas": datas,
@@ -165,8 +164,7 @@ async def api_filtros(data: str | None = None):
                 "data": None,
                 "ufs": [],
                 "rms": [],
-                "coordenadores": [],
-                "supervisores": [],
+                "scs": [],
             }
 
         rows = query_day(data_ref)
@@ -174,8 +172,7 @@ async def api_filtros(data: str | None = None):
             "data": data_ref,
             "ufs": unique_values(rows, "uf"),
             "rms": unique_values(rows, "rm"),
-            "coordenadores": unique_values(rows, "coordenador"),
-            "supervisores": unique_values(rows, "supervisor"),
+            "scs": unique_sc(rows),
         }
     except Exception as exc:
         return api_error("/api/filtros", exc)
@@ -186,8 +183,7 @@ async def api_resumo(
     data: str | None = None,
     uf: str | None = None,
     rm: str | None = None,
-    coordenador: str | None = None,
-    supervisor: str | None = None,
+    sc: str | None = None,
 ):
     try:
         data_ref = resolve_date(data)
@@ -206,7 +202,7 @@ async def api_resumo(
                 "divergencias": 0,
             }
 
-        rows = query_day(data_ref, uf, coordenador, supervisor, rm)
+        rows = query_day(data_ref, uf, sc, rm)
         count: defaultdict[str, int] = defaultdict(int)
         retidos = 0.0
         divergencias = 0
@@ -241,8 +237,7 @@ async def api_ranking(
     data: str | None = None,
     uf: str | None = None,
     rm: str | None = None,
-    coordenador: str | None = None,
-    supervisor: str | None = None,
+    sc: str | None = None,
     status: str | None = None,
     limit: int = Query(100, ge=1, le=500),
 ):
@@ -251,7 +246,7 @@ async def api_ranking(
         if not data_ref:
             return {"data": None, "rows": [], "total": 0}
 
-        rows = query_day(data_ref, uf, coordenador, supervisor, rm)
+        rows = query_day(data_ref, uf, sc, rm)
 
         if status:
             rows = [r for r in rows if r.get("status_risco") == status]
@@ -284,9 +279,7 @@ async def api_evolucao(
         if not fim:
             return {"codigo_base": codigo_base, "rows": []}
 
-        inicio = (
-            date.fromisoformat(fim) - timedelta(days=dias - 1)
-        ).isoformat()
+        inicio = (date.fromisoformat(fim) - timedelta(days=dias - 1)).isoformat()
 
         result = (
             sb.table("capotamento_diario")
@@ -313,7 +306,7 @@ async def api_evolucao(
 @app.get("/api/gestao")
 async def api_gestao(
     data: str | None = None,
-    tipo: str = Query("coordenador", pattern="^(coordenador|supervisor|rm)$"),
+    tipo: str = Query("sc", pattern="^(sc|rm)$"),
 ):
     try:
         data_ref = resolve_date(data)
@@ -324,7 +317,11 @@ async def api_gestao(
         groups: dict[str, dict[str, Any]] = {}
 
         for r in rows:
-            owner = str(r.get(tipo) or "SEM RESPONSÁVEL").strip()
+            if tipo == "sc":
+                owner = get_sc(r) or "SEM RESPONSÁVEL"
+            else:
+                owner = str(r.get("rm") or "SEM RESPONSÁVEL").strip()
+
             g = groups.setdefault(
                 owner,
                 {
@@ -342,10 +339,7 @@ async def api_gestao(
 
             g["bases"] += 1
             g["retidos_10d"] += float(r.get("retidos_10d") or 0)
-            g["score_max"] = max(
-                g["score_max"],
-                float(r.get("score_risco") or 0),
-            )
+            g["score_max"] = max(g["score_max"], float(r.get("score_risco") or 0))
 
             s = r.get("status_risco")
             if s == "MONITORAR":
@@ -384,16 +378,11 @@ async def api_exportar(
     data: str | None = None,
     uf: str | None = None,
     rm: str | None = None,
-    coordenador: str | None = None,
-    supervisor: str | None = None,
+    sc: str | None = None,
 ):
     try:
         data_ref = resolve_date(data)
-        rows = (
-            query_day(data_ref, uf, coordenador, supervisor, rm)
-            if data_ref
-            else []
-        )
+        rows = query_day(data_ref, uf, sc, rm) if data_ref else []
 
         output = io.StringIO()
         fields = [
@@ -426,11 +415,7 @@ async def api_exportar(
             "falta_indice",
         ]
 
-        writer = csv.DictWriter(
-            output,
-            fieldnames=fields,
-            extrasaction="ignore",
-        )
+        writer = csv.DictWriter(output, fieldnames=fields, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
 
