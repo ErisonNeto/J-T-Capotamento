@@ -22,8 +22,7 @@
       <label>Data<select id="dataFilter"></select></label>
       <label>UF<select id="ufFilter"><option value="">Todas</option></select></label>
       <label>R/M<select id="rmFilter"><option value="">Todos</option></select></label>
-      <label>Coordenador<select id="coordFilter"><option value="">Todos</option></select></label>
-      <label>Supervisor<select id="supFilter"><option value="">Todos</option></select></label>
+      <label>S/C<select id="scFilter"><option value="">Todos</option></select></label>
       <label>Status<select id="statusFilter">
         <option value="">Todos</option>
         <option>NORMAL</option><option>MONITORAR</option><option>PRÉ-ALERTA</option>
@@ -52,7 +51,7 @@
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>Base</th><th>UF</th><th>Supervisor</th><th>Coordenador</th><th>Status</th>
+            <th>Base</th><th>UF</th><th>S/C</th><th>Status</th>
             <th>Janela</th><th>Risco</th><th>Retidos</th><th>Índice</th><th>Falta qtd.</th><th>Falta índice</th>
           </tr></thead>
           <tbody id="rankingBody"></tbody>
@@ -70,7 +69,7 @@
       </article>
       <article class="panel">
         <div class="section-head"><div><h2>Gestão</h2><p>Quem concentra mais pressão operacional.</p></div>
-          <select id="gestaoTipo"><option value="coordenador">Coordenador</option><option value="supervisor">Supervisor</option><option value="rm">R/M</option></select>
+          <select id="gestaoTipo"><option value="sc">S/C</option><option value="rm">R/M</option></select>
         </div>
         <div id="gestaoList" class="owner-list"></div>
       </article>
@@ -113,6 +112,6 @@
       <div class="footnote">Pré-alerta interno: Monitorar ≥60% • Pré-alerta ≥80% • Crítico ≥90% do gatilho conjunto. O status oficial permanece o informado na fonte.</div>
     </section>
   </main>
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=4"></script>
 </body>
 </html>
