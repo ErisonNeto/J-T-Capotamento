@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#d71920">
-  <title>J&T Express | Capotamento</title>
-  <link rel="stylesheet" href="/static/style.css?v=20261026-sla-standard">
+  <title>J&T Express | Capotamento - Regional</title>
+  <link rel="stylesheet" href="/static/style.css?v=20261026-sla-standard-v2">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -14,9 +14,9 @@
       <div class="shipping-brand-block">
         <div class="shipping-badges">
           <span class="shipping-badge shipping-badge-red">J&amp;T EXPRESS</span>
-          <span class="shipping-badge shipping-badge-gray">QUALIDADE REGIONAL</span>
+          <span class="shipping-badge shipping-badge-gray">QUALIDADE • R/M ORLEAN</span>
         </div>
-        <h1>Capotamento <span class="title-accent"></span></h1>
+        <h1>Capotamento - Regional <span class="title-accent"></span></h1>
         <p>Risco operacional, pressão por janela e execução diária por base</p>
       </div>
       <div class="header-date-box">
@@ -32,36 +32,37 @@
         <div>
           <span class="section-kicker">CONTROLE DE VISÃO</span>
           <h2>Filtros operacionais</h2>
-          <p>Refine a data, gestão, UF e status da operação.</p>
+          <p>Refine o período e a gestão responsável pela operação.</p>
         </div>
         <div class="filter-actions">
           <button id="clearFilters" class="btn btn-light" type="button">Limpar filtros</button>
-          <button id="exportBtn" class="btn btn-download" type="button">Baixar CSV</button>
+          <button id="exportBtn" class="btn btn-light" type="button">Baixar CSV</button>
         </div>
       </div>
 
       <div class="filters-grid cap-filters-grid">
         <label class="filter-card"><span>Data</span><select id="dataFilter"></select></label>
         <label class="filter-card"><span>UF</span><select id="ufFilter"><option value="">Todas</option></select></label>
+        <label class="filter-card"><span>Coordenador / Supervisor</span><select id="scFilter"><option value="">Todos</option></select></label>
         <label class="filter-card"><span>R/M</span><select id="rmFilter"><option value="">Todos</option></select></label>
-        <label class="filter-card"><span>S/C</span><select id="scFilter"><option value="">Todos</option></select></label>
         <label class="filter-card"><span>Status</span><select id="statusFilter">
           <option value="">Todos</option>
           <option>NORMAL</option><option>MONITORAR</option><option>PRÉ-ALERTA</option>
           <option>PRÉ-ALERTA CRÍTICO</option><option>ALERTA</option><option>CAPOTADA</option>
         </select></label>
+        <label class="filter-card"><span>Atualizar visão</span><button class="btn btn-download" type="button" onclick="refresh()">Aplicar filtros</button></label>
       </div>
     </section>
 
     <section class="cards cap-cards" id="cards">
-      <article class="card kpi-card kpi-neutral"><div class="kpi-head"><span>Bases monitoradas</span><span class="kpi-icon">∑</span></div><strong id="kTotal">—</strong><small>Total de bases no recorte atual</small></article>
+      <article class="card kpi-card kpi-primary"><div class="kpi-head"><span>Bases monitoradas</span><span class="kpi-tag">TOTAL</span></div><strong id="kTotal">—</strong><small>Total de bases no recorte atual</small></article>
       <article class="card kpi-card kpi-neutral"><div class="kpi-head"><span>Monitorar</span><span class="kpi-icon">•</span></div><strong id="kMonitorar">—</strong><small>Bases em observação operacional</small></article>
       <article class="card kpi-card kpi-warning"><div class="kpi-head"><span>Pré-alerta</span><span class="kpi-tag warning-tag">ATENÇÃO</span></div><strong id="kPre">—</strong><small>Aproximação do gatilho operacional</small></article>
       <article class="card kpi-card kpi-danger"><div class="kpi-head"><span>Pré-alerta crítico</span><span class="kpi-icon">!</span></div><strong id="kCritico">—</strong><small>Pressão crítica antes do gatilho</small></article>
       <article class="card kpi-card kpi-danger"><div class="kpi-head"><span>Alerta oficial</span><span class="kpi-tag">ALERTA</span></div><strong id="kAlerta">—</strong><small>Bases em alerta na fonte oficial</small></article>
       <article class="card kpi-card kpi-danger"><div class="kpi-head"><span>Capotadas</span><span class="kpi-icon">!</span></div><strong id="kCapotadas">—</strong><small>Bases com capotamento identificado</small></article>
       <article class="card kpi-card kpi-neutral"><div class="kpi-head"><span>Retidos até 10D</span><span class="kpi-icon">∑</span></div><strong id="kRetidos">—</strong><small>Volume retido consolidado</small></article>
-      <article class="card kpi-card kpi-primary"><div class="kpi-head"><span>Reincidentes 30D</span><span class="kpi-tag">30D</span></div><strong id="kReincidentes">—</strong><small>Bases reincidentes no período</small></article>
+      <article class="card kpi-card kpi-neutral"><div class="kpi-head"><span>Reincidentes 30D</span><span class="kpi-tag">30D</span></div><strong id="kReincidentes">—</strong><small>Bases reincidentes no período</small></article>
     </section>
 
     <section class="panel execution">
@@ -120,7 +121,7 @@
     </section>
 
     <section class="panel rules">
-      <div class="panel-title"><div><span class="section-kicker">REGRAS</span><h2>Régua oficial</h2><span>Quantidade e índice devem ser atingidos simultaneamente.</span></div></div>
+      <div class="panel-title"><div><span class="section-kicker">REGRA OPERACIONAL</span><h2>Régua oficial</h2><span>Quantidade e índice devem ser atingidos simultaneamente.</span></div></div>
       <div class="rule-grid">
         <div><b>1D</b><strong>500</strong><span>Índice &gt; 0,50</span><em>Alerta</em></div>
         <div><b>3D</b><strong>800</strong><span>Índice &gt; 0,80</span><em>Capotamento</em></div>
@@ -133,6 +134,6 @@
 
     <footer class="dashboard-footer"><span>J&T Express • Capotamento</span><span>Dados operacionais para acompanhamento interno</span></footer>
   </main>
-  <script src="/static/app.js?v=20261026-sla-standard"></script>
+  <script src="/static/app.js?v=20261026-sla-standard-v2"></script>
 </body>
 </html>
