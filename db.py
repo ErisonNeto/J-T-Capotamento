@@ -38,6 +38,13 @@ def _placeholder(column: str) -> str:
     return "%s"
 
 
+def _headers() -> dict[str, str]:
+    return {
+        "X-API-Key": JT_API_KEY,
+        "Content-Type": "application/json",
+    }
+
+
 @dataclass
 class APIResult:
     data: list[dict[str, Any]]
@@ -53,6 +60,8 @@ class TableQuery:
         self.order_column: str | None = None
         self.order_desc = False
         self.limit_value: int | None = None
+        self._upsert_records: list[dict[str, Any]] | None = None
+        self._upsert_keys: list[str] | None = None
 
     def select(self, columns: str = "*") -> "TableQuery":
         columns = (columns or "*").strip()
@@ -88,7 +97,45 @@ class TableQuery:
         self.limit_value = max(1, int(value))
         return self
 
-    def execute(self) -> APIResult:
+    def upsert(
+        self,
+        records: list[dict[str, Any]],
+        on_conflict: str,
+    ) -> "TableQuery":
+        keys = [_ident(x.strip()) for x in str(on_conflict).split(",") if x.strip()]
+        if not keys:
+            raise ValueError("on_conflict não informado para upsert")
+        self._upsert_records = list(records)
+        self._upsert_keys = keys
+        return self
+
+    def _execute_upsert(self) -> APIResult:
+        records = self._upsert_records or []
+        if not records:
+            return APIResult(data=[])
+
+        response = requests.post(
+            f"{JT_API_URL}/import",
+            headers=_headers(),
+            json={
+                "tabela": self.table,
+                "chave": self._upsert_keys or [],
+                "registros": records,
+                "criar_tabela": False,
+                "adicionar_colunas": False,
+            },
+            timeout=(15, 180),
+        )
+
+        if not response.ok:
+            raise RuntimeError(
+                f"JT API /import retornou HTTP {response.status_code}: {response.text}"
+            )
+
+        payload = response.json()
+        return APIResult(data=[payload] if isinstance(payload, dict) else [])
+
+    def _execute_select(self) -> APIResult:
         sql = f"SELECT {self.columns} FROM {self.table}"
         params: list[Any] = []
 
@@ -109,10 +156,7 @@ class TableQuery:
 
         response = requests.post(
             f"{JT_API_URL}/query",
-            headers={
-                "X-API-Key": JT_API_KEY,
-                "Content-Type": "application/json",
-            },
+            headers=_headers(),
             json={"sql": sql, "params": params},
             timeout=(15, 120),
         )
@@ -130,6 +174,11 @@ class TableQuery:
             data=[dict(zip(columns, row)) for row in rows]
         )
 
+    def execute(self) -> APIResult:
+        if self._upsert_records is not None:
+            return self._execute_upsert()
+        return self._execute_select()
+
 
 class JTAPIClient:
     def table(self, table: str) -> TableQuery:
@@ -140,5 +189,5 @@ _CLIENT = JTAPIClient()
 
 
 def get_supabase() -> JTAPIClient:
-    """Compatibilidade com o main.py antigo; os dados agora vêm da JT API."""
+    """Compatibilidade com o código antigo; os dados agora vêm da JT API."""
     return _CLIENT
