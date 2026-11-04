@@ -455,19 +455,45 @@ def parse_files(
 
 
 def upload(payload: list[dict[str, Any]], batch_size: int = 200) -> None:
+    """Envia diretamente para a JT API, sem dependencia do db.py/Supabase."""
     if not payload:
         return
 
-    from db import get_supabase
+    import os
+    import requests
 
-    sb = get_supabase()
+    url = os.getenv("JT_API_URL", "").strip().rstrip("/")
+    key = os.getenv("JT_API_KEY", "").strip()
+    if not url or not key:
+        raise RuntimeError(
+            "Configure JT_API_URL e JT_API_KEY no arquivo .env"
+        )
 
-    for start in range(0, len(payload), batch_size):
+    headers = {"X-API-Key": key, "Content-Type": "application/json"}
+    total = len(payload)
+
+    for start in range(0, total, batch_size):
         batch = payload[start:start + batch_size]
-        sb.table("capotamento_diario").upsert(
-            batch,
-            on_conflict="data,codigo_base",
-        ).execute()
+        response = requests.post(
+            f"{url}/import",
+            headers=headers,
+            json={
+                "tabela": "capotamento_diario",
+                "chave": ["data", "codigo_base"],
+                "registros": batch,
+                "criar_tabela": False,
+                "adicionar_colunas": False,
+            },
+            timeout=(15, 180),
+        )
+        if not response.ok:
+            raise RuntimeError(
+                f"Falha no lote {start // batch_size + 1}: "
+                f"JT API respondeu HTTP {response.status_code}: "
+                f"{response.text[:1200]}"
+            )
+        print(f"  JT API: enviados {min(start + batch_size, total):,}/{total:,} registros")
+
 
 
 def print_summary(summary: dict[str, Any]) -> None:
@@ -570,7 +596,7 @@ def main() -> None:
     payload, summary = parse_files(capotamento_paths, gestao_paths)
     print_summary(summary)
     if args.dry_run:
-        print("DRY-RUN: nada foi enviado ao Supabase.")
+        print("DRY-RUN: nada foi enviado à JT API.")
         return
     upload(payload)
     print(f"Importação concluída com sucesso. {len(payload):,} registros processados.")
