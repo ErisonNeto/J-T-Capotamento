@@ -253,6 +253,10 @@ def parse_capotamento_file(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     path = validate_file(path)
     df = pd.read_excel(path, sheet_name=0)
+    # Aceita os cabecalhos antigos e novos da J&T.
+    df.columns = [str(c).strip() for c in df.columns]
+    if "Nome da base" not in df.columns and "Nome da filial" in df.columns:
+        df = df.rename(columns={"Nome da filial": "Nome da base"})
 
     missing = [c for c in COLS if c not in df.columns]
     if missing:
