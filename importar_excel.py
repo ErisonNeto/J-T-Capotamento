@@ -517,70 +517,63 @@ def print_summary(summary: dict[str, Any]) -> None:
     print("=" * 80)
 
 
+def auto_detect_files() -> tuple[list[Path], list[Path]]:
+    """Descobre todos os arquivos na pasta atual sem exigir argumentos."""
+    pasta = Path.cwd()
+    alertas = sorted(
+        (p for p in pasta.glob("*.xlsx")
+         if not p.name.startswith("~$")
+         and "alerta de capotamento" in p.name.lower()),
+        key=lambda p: p.name,
+    )
+    gestoes = sorted(
+        (p for p in pasta.glob("*.xlsx")
+         if not p.name.startswith("~$")
+         and ("gestão de colaboradores" in p.name.lower()
+              or "gestao de colaboradores" in p.name.lower())),
+        key=lambda p: p.name,
+    )
+    if not alertas:
+        raise FileNotFoundError(f"Nenhum Alerta de Capotamento encontrado em {pasta}")
+    if not gestoes:
+        raise FileNotFoundError(f"Nenhuma Gestao de colaboradores encontrada em {pasta}")
+    return alertas, gestoes
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=(
-            "Importa vários arquivos Alerta de Capotamento + "
-            "vários arquivos Gestão para o Supabase."
-        )
+        description="Importa arquivos de Capotamento e Gestão. Sem argumentos, busca todos os Excel na pasta."
     )
-
-    parser.add_argument(
-        "capotamento",
-        nargs="+",
-        help=(
-            "Um ou mais arquivos Excel de Alerta de Capotamento. "
-            "Use aspas quando houver espaços no nome."
-        ),
-    )
-
-    parser.add_argument(
-        "--gestao",
-        "-g",
-        nargs="+",
-        help=(
-            "Um ou mais arquivos Excel de Gestão de colaboradores. "
-            "Ex.: -g \"Gestão atual.xlsx\" \"Gestão antiga.xlsx\""
-        ),
-    )
-
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Valida/calcula sem enviar ao Supabase.",
-    )
-
+    parser.add_argument("capotamento", nargs="*", help="Arquivos Excel de capotamento (opcional)")
+    parser.add_argument("--gestao", "-g", nargs="+", help="Arquivos de Gestão (opcional)")
+    parser.add_argument("--dry-run", action="store_true", help="Valida sem enviar dados")
     args = parser.parse_args()
 
-    if args.gestao:
-        capotamento_paths = args.capotamento
-        gestao_paths = args.gestao
-    else:
-        if len(args.capotamento) < 2:
-            parser.error(
-                "Informe pelo menos 1 arquivo de Capotamento e 1 de Gestão. "
-                "Para vários arquivos, prefira usar --gestao."
-            )
-
+    if not args.capotamento and not args.gestao:
+        capotamento_paths, gestao_paths = auto_detect_files()
+        print(f"Arquivos de Capotamento encontrados: {len(capotamento_paths)}")
+        for p in capotamento_paths:
+            print(f" - {p.name}")
+        print(f"Arquivos de Gestão encontrados: {len(gestao_paths)}")
+        for p in gestao_paths:
+            print(f" - {p.name}")
+    elif args.gestao:
+        if not args.capotamento:
+            parser.error("Informe um arquivo de Capotamento ou execute sem argumentos.")
+        capotamento_paths, gestao_paths = args.capotamento, args.gestao
+    elif len(args.capotamento) >= 2:
         capotamento_paths = args.capotamento[:-1]
         gestao_paths = [args.capotamento[-1]]
+    else:
+        parser.error("Para uso automático, execute sem argumentos.")
 
-    payload, summary = parse_files(
-        capotamento_paths,
-        gestao_paths,
-    )
-
+    payload, summary = parse_files(capotamento_paths, gestao_paths)
     print_summary(summary)
-
     if args.dry_run:
         print("DRY-RUN: nada foi enviado ao Supabase.")
         return
-
     upload(payload)
-    print(
-        f"Importação concluída com sucesso. "
-        f"{len(payload):,} registros processados."
-    )
+    print(f"Importação concluída com sucesso. {len(payload):,} registros processados.")
 
 
 if __name__ == "__main__":
