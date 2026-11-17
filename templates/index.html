@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#d71920">
   <title>J&T Express | Capotamento - Regional</title>
-  <link rel="stylesheet" href="/static/style.css?v=20261026-sla-standard-v2">
+  <link rel="stylesheet" href="/static/style.css?v=20261117-date-table">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -41,7 +41,16 @@
       </div>
 
       <div class="filters-grid cap-filters-grid">
-        <label class="filter-card"><span>Data</span><select id="dataFilter"></select></label>
+        <div class="filter-card date-table-filter">
+          <span id="dateFilterLabel">Data de referência</span>
+          <input type="hidden" id="dataFilter" value="">
+          <div class="date-table-wrap" role="group" aria-labelledby="dateFilterLabel">
+            <table class="date-select-table">
+              <thead><tr><th scope="col">Data disponível</th><th scope="col">Seleção</th></tr></thead>
+              <tbody id="dateTableBody"><tr><td colspan="2">Carregando datas...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
         <label class="filter-card"><span>UF</span><select id="ufFilter"><option value="">Todas</option></select></label>
         <label class="filter-card"><span>Coordenador / Supervisor</span><select id="scFilter"><option value="">Todos</option></select></label>
         <label class="filter-card"><span>R/M</span><select id="rmFilter"><option value="">Todos</option></select></label>
@@ -134,6 +143,6 @@
 
     <footer class="dashboard-footer"><span>J&T Express • Capotamento</span><span>Dados operacionais para acompanhamento interno</span></footer>
   </main>
-  <script src="/static/app.js?v=20261026-sla-standard-v2"></script>
+  <script src="/static/app.js?v=20261117-date-table"></script>
 </body>
 </html>
