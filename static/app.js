@@ -34,10 +34,43 @@ function fillSelect(el, values, allLabel){
   if(values.includes(old))el.value=old;
 }
 
+function renderDateTable(dates) {
+  const input = $('#dataFilter');
+  const table = $('#dateTableBody');
+  const current = dates.includes(input.value) ? input.value : (dates[0] || '');
+  input.value = current;
+  table.innerHTML = dates.map(x => {
+    const date = new Date(x + 'T12:00:00').toLocaleDateString('pt-BR');
+    const active = x === current;
+    return `<tr class="${active ? 'date-row-active' : ''}"><td><button type="button" class="date-row-button" data-date="${esc(x)}" aria-pressed="${active}">${esc(date)}</button></td><td><span class="date-choice">${active ? 'Selecionada' : 'Selecionar'}</span></td></tr>`;
+  }).join('') || '<tr><td colspan="2">Nenhuma data disponível.</td></tr>';
+  table.querySelectorAll('button[data-date]').forEach(button => {
+    button.addEventListener('click', async () => {
+      if (button.dataset.date === input.value) return;
+      input.value = button.dataset.date;
+      table.querySelectorAll('tr').forEach(row => {
+        const active = row.querySelector('button')?.dataset.date === input.value;
+        row.classList.toggle('date-row-active', active);
+        const btn = row.querySelector('button');
+        if (btn) btn.setAttribute('aria-pressed', String(active));
+        const label = row.querySelector('.date-choice');
+        if (label) label.textContent = active ? 'Selecionada' : 'Selecionar';
+      });
+      selectedBase = null;
+      await reloadFilters();
+      await refresh();
+    });
+  });
+}
+
 async function init(){
   try{
     const d=await getJSON('/api/datas');
-    $('#dataFilter').innerHTML=d.datas.map(x=>`<option value="${x}">${new Date(x+'T12:00:00').toLocaleDateString('pt-BR')}</option>`).join('');
+    renderDateTable(d.datas || []);
+    if (!$('#dataFilter').value) {
+      $('#updated').textContent = 'Nenhuma data disponível';
+      return;
+    }
     await reloadFilters();
     await refresh();
   }catch(e){console.error(e);$('#updated').textContent='Erro ao carregar dados';}
@@ -141,7 +174,7 @@ async function loadEvolution(code){
   charts.indice=new Chart($('#indiceChart'),{type:'line',data:{labels,datasets:[['1D','indice_1d'],['3D','indice_3d'],['5D','indice_5d'],['7D','indice_7d'],['10D','indice_10d']].map(([l,k])=>({label:l,data:rows.map(x=>x[k]),tension:.25,pointRadius:2}))},options:common});
 }
 
-$('#dataFilter').addEventListener('change',async()=>{await reloadFilters();await refresh()});
+
 ['#ufFilter','#rmFilter','#scFilter','#statusFilter'].forEach(id=>$(id).addEventListener('change',refresh));
 $('#gestaoTipo').addEventListener('change',loadGestao);
 $('#clearFilters').addEventListener('click',()=>{['#ufFilter','#rmFilter','#scFilter','#statusFilter'].forEach(id=>$(id).value='');refresh()});
