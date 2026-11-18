@@ -15,6 +15,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 
 from db import get_supabase
+from gestao_postgres import aplicar_gestao
 
 
 app = FastAPI(title="J&T | Capotamento")
@@ -81,16 +82,14 @@ def query_day(
     sb = get_supabase()
     q = sb.table("capotamento_diario").select("*").eq("data", data_ref)
 
+    # Evita filtrar gestores históricos antes de aplicar a gestão vigente.
+    rows = aplicar_gestao(q.execute().data or [], coluna_base="nome_base")
     if uf:
-        q = q.eq("uf", uf)
+        rows = [r for r in rows if str(r.get("uf") or "").strip() == uf]
     if rm:
-        q = q.eq("rm", rm)
-
-    rows = q.execute().data or []
-
+        rows = [r for r in rows if str(r.get("rm") or "").strip() == rm]
     if sc:
         rows = [r for r in rows if get_sc(r) == sc]
-
     return rows
 
 
