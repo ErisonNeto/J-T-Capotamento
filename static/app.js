@@ -34,39 +34,42 @@ function fillSelect(el, values, allLabel){
   if(values.includes(old))el.value=old;
 }
 
-function renderDateTable(dates) {
+let availableDates = new Set();
+let lastValidDate = '';
+
+function setupDateCalendar(dates) {
   const input = $('#dataFilter');
-  const table = $('#dateTableBody');
-  const current = dates.includes(input.value) ? input.value : (dates[0] || '');
-  input.value = current;
-  table.innerHTML = dates.map(x => {
-    const date = new Date(x + 'T12:00:00').toLocaleDateString('pt-BR');
-    const active = x === current;
-    return `<tr class="${active ? 'date-row-active' : ''}"><td><button type="button" class="date-row-button" data-date="${esc(x)}" aria-pressed="${active}">${esc(date)}</button></td><td><span class="date-choice">${active ? 'Selecionada' : 'Selecionar'}</span></td></tr>`;
-  }).join('') || '<tr><td colspan="2">Nenhuma data disponível.</td></tr>';
-  table.querySelectorAll('button[data-date]').forEach(button => {
-    button.addEventListener('click', async () => {
-      if (button.dataset.date === input.value) return;
-      input.value = button.dataset.date;
-      table.querySelectorAll('tr').forEach(row => {
-        const active = row.querySelector('button')?.dataset.date === input.value;
-        row.classList.toggle('date-row-active', active);
-        const btn = row.querySelector('button');
-        if (btn) btn.setAttribute('aria-pressed', String(active));
-        const label = row.querySelector('.date-choice');
-        if (label) label.textContent = active ? 'Selecionada' : 'Selecionar';
-      });
-      selectedBase = null;
-      await reloadFilters();
-      await refresh();
-    });
-  });
+  const sorted = [...new Set(dates)].sort();
+  availableDates = new Set(sorted);
+  input.min = sorted[0] || '';
+  input.max = sorted[sorted.length - 1] || '';
+  lastValidDate = sorted[sorted.length - 1] || '';
+  input.value = lastValidDate;
+  input.disabled = !lastValidDate;
+  $('#dateFilterHint').textContent = lastValidDate
+    ? 'Escolha uma data pelo calendário.'
+    : 'Nenhuma data disponível.';
+}
+
+async function changeCalendarDate() {
+  const input = $('#dataFilter');
+  if (!availableDates.has(input.value)) {
+    $('#dateFilterHint').textContent = 'Sem dados nessa data. Selecione outro dia.';
+    input.value = lastValidDate;
+    return;
+  }
+  if (input.value === lastValidDate) return;
+  lastValidDate = input.value;
+  $('#dateFilterHint').textContent = 'Escolha uma data pelo calendário.';
+  selectedBase = null;
+  await reloadFilters();
+  await refresh();
 }
 
 async function init(){
   try{
     const d=await getJSON('/api/datas');
-    renderDateTable(d.datas || []);
+    setupDateCalendar(d.datas || []);
     if (!$('#dataFilter').value) {
       $('#updated').textContent = 'Nenhuma data disponível';
       return;
@@ -175,6 +178,7 @@ async function loadEvolution(code){
 }
 
 
+$('#dataFilter').addEventListener('change', changeCalendarDate);
 ['#ufFilter','#rmFilter','#scFilter','#statusFilter'].forEach(id=>$(id).addEventListener('change',refresh));
 $('#gestaoTipo').addEventListener('change',loadGestao);
 $('#clearFilters').addEventListener('click',()=>{['#ufFilter','#rmFilter','#scFilter','#statusFilter'].forEach(id=>$(id).value='');refresh()});
